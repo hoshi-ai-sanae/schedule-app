@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Schedule & Remind</title>
+  <!-- デザインを整えるTailwind CSSを読み込む -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- アイコンを表示するFontAwesomeを読み込む -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @keyframes bounce-short {
@@ -14,7 +16,6 @@
     .animate-bounce-short {
       animation: bounce-short 0.5s ease-in-out 3;
     }
-    /* カレンダーのドット */
     .task-dot {
       position: absolute;
       bottom: 4px;
@@ -26,6 +27,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans pb-20">
 
+  <!-- ヘッダー -->
   <header class="bg-indigo-600 text-white p-6 rounded-b-3xl shadow-md mb-8">
     <div class="max-w-5xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -40,8 +42,10 @@
 
   <main class="max-w-5xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8">
     
+    <!-- 左カラム：カレンダー ＆ 入力フォーム -->
     <div class="lg:col-span-5 space-y-6">
       
+      <!-- カレンダー -->
       <section class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
@@ -68,14 +72,16 @@
           <div class="font-medium py-1 text-blue-400">土</div>
         </div>
         <div id="calendar-grid" class="grid grid-cols-7 gap-1">
-          </div>
+          <!-- JSでカレンダーが生成されます -->
+        </div>
       </section>
 
-      <section class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-        <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-slate-700">
+      <!-- 入力フォーム -->
+      <section id="form-section" class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 transition-all">
+        <h2 id="form-title" class="text-lg font-bold mb-4 flex items-center gap-2 text-slate-700">
           <i class="fa-solid fa-plus text-indigo-500"></i> 新しい予定を追加
         </h2>
-        <form id="task-form" onsubmit="addTask(event)" class="space-y-4">
+        <form id="task-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
           <div>
             <input type="text" id="task-title" placeholder="予定のタイトル（例：ミーティング）" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-colors" required>
           </div>
@@ -107,13 +113,20 @@
             </select>
           </div>
 
-          <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3.5 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
-            <i class="fa-solid fa-plus"></i> 追加する
-          </button>
+          <div class="flex gap-2 mt-2">
+            <button type="submit" id="submit-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3.5 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              <i class="fa-solid fa-plus"></i> 追加する
+            </button>
+            <!-- 編集キャンセルのボタン（普段は非表示） -->
+            <button type="button" id="cancel-edit-btn" onclick="cancelEdit()" class="hidden flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-3.5 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2">
+              <i class="fa-solid fa-xmark"></i> キャンセル
+            </button>
+          </div>
         </form>
       </section>
     </div>
 
+    <!-- 右カラム：タスクリスト -->
     <div class="lg:col-span-7">
       <section class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 min-h-[500px]">
         <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
@@ -127,11 +140,13 @@
         </div>
         
         <div id="task-list" class="space-y-3">
-          </div>
+          <!-- JSでタスクリストが生成されます -->
+        </div>
       </section>
     </div>
   </main>
 
+  <!-- アプリ内ポップアップ通知（トースト）コンテナ -->
   <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
   </div>
 
@@ -140,6 +155,7 @@
     let tasks = [];
     let currentMonth = new Date();
     let filterDate = null;
+    let editingTaskId = null; // 編集中のタスクIDを保持する変数
 
     // === 初期化 ===
     function init() {
@@ -148,10 +164,7 @@
         tasks = JSON.parse(saved);
       }
 
-      const now = new Date();
-      document.getElementById('task-date').value = now.toISOString().split('T')[0];
-      now.setHours(now.getHours() + 1);
-      document.getElementById('task-time').value = now.toTimeString().substring(0, 5);
+      resetFormDefaults();
 
       if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
         Notification.requestPermission();
@@ -164,6 +177,17 @@
 
       updateUI();
       setInterval(checkReminders, 10000);
+    }
+
+    // === フォームの初期化処理 ===
+    function resetFormDefaults() {
+      const now = new Date();
+      document.getElementById('task-date').value = now.toISOString().split('T')[0];
+      now.setHours(now.getHours() + 1);
+      document.getElementById('task-time').value = now.toTimeString().substring(0, 5);
+      document.getElementById('task-title').value = '';
+      document.getElementById('task-reminder').value = '0';
+      document.getElementById('submit-btn').disabled = true;
     }
 
     // === データ保存と画面更新 ===
@@ -187,7 +211,10 @@
         filterDate = null;
       } else {
         filterDate = dateStr;
-        document.getElementById('task-date').value = dateStr;
+        // 新規作成時のみ、カレンダー選択に合わせて日付を変更
+        if (!editingTaskId) {
+          document.getElementById('task-date').value = dateStr;
+        }
       }
       updateUI();
     }
@@ -269,9 +296,11 @@
       displayedTasks.forEach(task => {
         const taskDateTime = new Date(`${task.date}T${task.time}`);
         const isPast = taskDateTime < now && !task.completed;
+        const isEditing = editingTaskId === task.id;
 
         let containerClass = "group flex items-center justify-between p-4 rounded-2xl border transition-all ";
-        if (task.completed) containerClass += "bg-slate-50 border-slate-200 opacity-60";
+        if (isEditing) containerClass += "bg-indigo-50 border-indigo-400 shadow-md ring-2 ring-indigo-100";
+        else if (task.completed) containerClass += "bg-slate-50 border-slate-200 opacity-60";
         else if (isPast) containerClass += "bg-red-50 border-red-200";
         else containerClass += "bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200";
 
@@ -306,16 +335,24 @@
                 </div>
               </div>
             </div>
-            <button onclick="deleteTask('${task.id}')" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 md:opacity-100">
-              <i class="fa-solid fa-trash-can text-lg"></i>
-            </button>
+            
+            <!-- 編集＆削除ボタン -->
+            <div class="flex gap-1 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 md:opacity-100 transition-opacity">
+              <button onclick="editTask('${task.id}')" class="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="編集">
+                <i class="fa-solid fa-pen text-lg"></i>
+              </button>
+              <button onclick="deleteTask('${task.id}')" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors" title="削除">
+                <i class="fa-solid fa-trash-can text-lg"></i>
+              </button>
+            </div>
           </div>
         `;
       });
     }
 
     // === タスク操作 ===
-    function addTask(e) {
+    // フォームの送信処理（追加と更新を兼ねる）
+    function handleFormSubmit(e) {
       e.preventDefault();
       const title = document.getElementById('task-title').value.trim();
       const date = document.getElementById('task-date').value;
@@ -324,24 +361,90 @@
 
       if (!title || !date || !time) return;
 
-      const newTask = {
-        id: 'task_' + Date.now(),
-        title: title,
-        date: date,
-        time: time,
-        reminderOffset: reminderOffset,
-        completed: false,
-        notified: false
-      };
+      if (editingTaskId) {
+        // --- 編集モード（更新処理） ---
+        tasks = tasks.map(t => {
+          if (t.id === editingTaskId) {
+            // 変更があれば通知フラグ(notified)をリセットし、再び通知されるようにする
+            const isTimeChanged = t.date !== date || t.time !== time || t.reminderOffset !== reminderOffset;
+            return {
+              ...t,
+              title: title,
+              date: date,
+              time: time,
+              reminderOffset: reminderOffset,
+              notified: isTimeChanged ? false : t.notified
+            };
+          }
+          return t;
+        });
+        
+        // 編集モード終了
+        cancelEdit();
 
-      tasks.push(newTask);
+      } else {
+        // --- 新規追加モード ---
+        const newTask = {
+          id: 'task_' + Date.now(),
+          title: title,
+          date: date,
+          time: time,
+          reminderOffset: reminderOffset,
+          completed: false,
+          notified: false
+        };
+        tasks.push(newTask);
+        resetFormDefaults();
+      }
+
+      // 日時順に並び替え
       tasks.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
       
       saveData();
       updateUI();
+    }
 
-      document.getElementById('task-title').value = '';
-      document.getElementById('submit-btn').disabled = true;
+    // 編集ボタンを押したときの処理
+    function editTask(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+
+      editingTaskId = id;
+      
+      // フォームにタスクの情報をセット
+      document.getElementById('task-title').value = task.title;
+      document.getElementById('task-date').value = task.date;
+      document.getElementById('task-time').value = task.time;
+      document.getElementById('task-reminder').value = task.reminderOffset;
+
+      // フォームの見た目を「編集モード」に変更
+      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-pen text-indigo-500"></i> 予定を編集';
+      document.getElementById('submit-btn').innerHTML = '<i class="fa-solid fa-check"></i> 更新する';
+      document.getElementById('submit-btn').classList.replace('bg-indigo-600', 'bg-green-600');
+      document.getElementById('submit-btn').classList.replace('hover:bg-indigo-700', 'hover:bg-green-700');
+      document.getElementById('submit-btn').disabled = false;
+      document.getElementById('cancel-edit-btn').classList.remove('hidden');
+
+      // フォームの場所にスクロール
+      document.getElementById('form-section').scrollIntoView({ behavior: 'smooth' });
+      
+      updateUI(); // リストの見た目を更新（編集中の行をハイライト）
+    }
+
+    // 編集キャンセルボタンを押したときの処理
+    function cancelEdit() {
+      editingTaskId = null;
+      
+      resetFormDefaults();
+
+      // フォームの見た目を「新規追加モード」に戻す
+      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-plus text-indigo-500"></i> 新しい予定を追加';
+      document.getElementById('submit-btn').innerHTML = '<i class="fa-solid fa-plus"></i> 追加する';
+      document.getElementById('submit-btn').classList.replace('bg-green-600', 'bg-indigo-600');
+      document.getElementById('submit-btn').classList.replace('hover:bg-green-700', 'hover:bg-indigo-700');
+      document.getElementById('cancel-edit-btn').classList.add('hidden');
+      
+      updateUI();
     }
 
     function toggleComplete(id) {
@@ -351,6 +454,9 @@
     }
 
     function deleteTask(id) {
+      // 編集中に削除された場合はキャンセル処理も行う
+      if (editingTaskId === id) cancelEdit();
+      
       tasks = tasks.filter(t => t.id !== id);
       saveData();
       updateUI();
@@ -363,7 +469,7 @@
         if (!AudioContext) return;
         const ctx = new AudioContext();
 
-        // ★ここで3回連続で鳴るように設定しています
+        // 3回連続で鳴るように設定
         const repeatCount = 3; 
 
         for (let i = 0; i < repeatCount; i++) {
