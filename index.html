@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Schedule & Remind</title>
-  <!-- デザインを整えるTailwind CSSを読み込む -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- アイコンを表示するFontAwesomeを読み込む -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @keyframes bounce-short {
@@ -28,7 +26,6 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans pb-20">
 
-  <!-- ヘッダー -->
   <header class="bg-indigo-600 text-white p-6 rounded-b-3xl shadow-md mb-8">
     <div class="max-w-5xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -43,10 +40,8 @@
 
   <main class="max-w-5xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8">
     
-    <!-- 左カラム：カレンダー ＆ 入力フォーム -->
     <div class="lg:col-span-5 space-y-6">
       
-      <!-- カレンダー -->
       <section class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
@@ -73,11 +68,9 @@
           <div class="font-medium py-1 text-blue-400">土</div>
         </div>
         <div id="calendar-grid" class="grid grid-cols-7 gap-1">
-          <!-- JSでカレンダーが生成されます -->
-        </div>
+          </div>
       </section>
 
-      <!-- 入力フォーム -->
       <section class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
         <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-slate-700">
           <i class="fa-solid fa-plus text-indigo-500"></i> 新しい予定を追加
@@ -121,7 +114,6 @@
       </section>
     </div>
 
-    <!-- 右カラム：タスクリスト -->
     <div class="lg:col-span-7">
       <section class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 min-h-[500px]">
         <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
@@ -135,13 +127,11 @@
         </div>
         
         <div id="task-list" class="space-y-3">
-          <!-- JSでタスクリストが生成されます -->
-        </div>
+          </div>
       </section>
     </div>
   </main>
 
-  <!-- アプリ内ポップアップ通知（トースト）コンテナ -->
   <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
   </div>
 
@@ -153,33 +143,26 @@
 
     // === 初期化 ===
     function init() {
-      // ローカルストレージからデータ読み込み
       const saved = localStorage.getItem('schedule_tasks_html');
       if (saved) {
         tasks = JSON.parse(saved);
       }
 
-      // 入力フォームの初期値を今日・現在時刻＋1時間に設定
       const now = new Date();
       document.getElementById('task-date').value = now.toISOString().split('T')[0];
       now.setHours(now.getHours() + 1);
       document.getElementById('task-time').value = now.toTimeString().substring(0, 5);
 
-      // ブラウザ通知の許可をリクエスト
       if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
         Notification.requestPermission();
       }
 
-      // 入力欄の入力チェック（ボタンの有効/無効）
       document.getElementById('task-title').addEventListener('input', function() {
         document.getElementById('submit-btn').disabled = !this.value.trim();
       });
       document.getElementById('submit-btn').disabled = true;
 
-      // 画面更新
       updateUI();
-
-      // リマインダー監視開始（10秒に1回チェック）
       setInterval(checkReminders, 10000);
     }
 
@@ -201,10 +184,10 @@
 
     function setFilterDate(dateStr) {
       if (filterDate === dateStr) {
-        filterDate = null; // 選択解除
+        filterDate = null;
       } else {
         filterDate = dateStr;
-        document.getElementById('task-date').value = dateStr; // フォームの日付も合わせる
+        document.getElementById('task-date').value = dateStr;
       }
       updateUI();
     }
@@ -221,12 +204,10 @@
       const grid = document.getElementById('calendar-grid');
       grid.innerHTML = '';
 
-      // 空白の日
       for (let i = 0; i < firstDay; i++) {
         grid.innerHTML += `<div class="p-2"></div>`;
       }
 
-      // 日付
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const hasTask = tasks.some(t => t.date === dateStr && !t.completed);
@@ -260,7 +241,6 @@
       const showAllBtn = document.getElementById('show-all-btn');
       const listTitle = document.getElementById('list-title');
 
-      // 絞り込みとタイトルの設定
       let displayedTasks = tasks;
       if (filterDate) {
         displayedTasks = tasks.filter(t => t.date === filterDate);
@@ -355,13 +335,11 @@
       };
 
       tasks.push(newTask);
-      // 日時順に並び替え
       tasks.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
       
       saveData();
       updateUI();
 
-      // フォームリセット
       document.getElementById('task-title').value = '';
       document.getElementById('submit-btn').disabled = true;
     }
@@ -384,22 +362,29 @@
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (!AudioContext) return;
         const ctx = new AudioContext();
-        const osc = ctx.createOscillator();
-        const gainNode = ctx.createGain();
 
-        // ピコーンという音
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1);
+        // ★ここで3回連続で鳴るように設定しています
+        const repeatCount = 3; 
 
-        gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        for (let i = 0; i < repeatCount; i++) {
+          const startTime = ctx.currentTime + (i * 0.8);
 
-        osc.connect(gainNode);
-        gainNode.connect(ctx.destination);
+          const osc = ctx.createOscillator();
+          const gainNode = ctx.createGain();
 
-        osc.start();
-        osc.stop(ctx.currentTime + 0.3);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, startTime);
+          osc.frequency.exponentialRampToValueAtTime(1760, startTime + 0.1);
+
+          gainNode.gain.setValueAtTime(0.2, startTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+
+          osc.connect(gainNode);
+          gainNode.connect(ctx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + 0.3);
+        }
       } catch (e) {
         console.error("Audio play failed", e);
       }
@@ -428,7 +413,6 @@
       
       container.appendChild(toast);
       
-      // 10秒後に自動で消える
       setTimeout(() => {
         if(document.getElementById(toastId)) {
           document.getElementById(toastId).remove();
@@ -441,10 +425,8 @@
         ? `時間です: ${task.title}` 
         : `あと${task.reminderOffset}分で開始: ${task.title}`;
 
-      // 音を鳴らす
       playNotificationSound();
 
-      // ブラウザ通知
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification("スケジュールリマインダー", {
           body: message,
@@ -452,7 +434,6 @@
         });
       }
 
-      // 画面内ポップアップ
       showToast(message, `${task.date} ${task.time}`);
     }
 
@@ -478,8 +459,7 @@
         saveData();
       }
       
-      // 過去のタスクを赤くハイライトするために定期的に再描画
-      if (now.getSeconds() % 60 < 10) { // 1分おきに画面更新
+      if (now.getSeconds() % 60 < 10) { 
         renderTasks();
       }
     }
@@ -496,7 +476,6 @@
       }
     }
 
-    // アプリ起動
     init();
 
   </script>
