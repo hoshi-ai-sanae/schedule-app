@@ -1,589 +1,398 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Schedule & Remind</title>
-  <!-- デザインを整えるTailwind CSSを読み込む -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- アイコンを表示するFontAwesomeを読み込む -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    @keyframes bounce-short {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
-    }
-    .animate-bounce-short {
-      animation: bounce-short 0.5s ease-in-out 3;
-    }
-    .task-dot {
-      position: absolute;
-      bottom: 4px;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schedule & Todo</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #f5f0e8; font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; color: #3C3489; min-height: 100vh; }
+.app { max-width: 600px; margin: 0 auto; padding: 1.2rem 1rem 3rem; }
+.header { text-align: center; margin-bottom: 1.5rem; padding: 1.2rem; background: #ffffff; border-radius: 14px; border: 1px solid #CECBF6; }
+.header h1 { font-size: 20px; color: #7F77DD; font-weight: bold; margin-bottom: 2px; }
+.header p { font-size: 12px; color: #AFA9EC; }
+.test-btn { display: block; width: 100%; padding: 10px; margin-bottom: 1rem; background: #EEEDFE; border: 1px solid #CECBF6; border-radius: 10px; color: #7F77DD; font-size: 13px; font-weight: bold; cursor: pointer; text-align: center; }
+.test-btn:hover { background: #d8d5f7; }
+.tabs { display: flex; gap: 8px; margin-bottom: 1rem; }
+.tab { flex: 1; padding: 10px; font-size: 14px; font-weight: bold; border: 2px solid #CECBF6; border-radius: 10px; background: #ffffff; color: #AFA9EC; cursor: pointer; text-align: center; transition: all 0.2s; }
+.tab.active { background: #7F77DD; border-color: #7F77DD; color: #ffffff; }
+.section { display: none; }
+.section.active { display: block; }
+.card { background: #ffffff; border: 1px solid #CECBF6; border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: 1rem; }
+.card-title { font-size: 14px; font-weight: bold; color: #3C3489; margin-bottom: 10px; }
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cal-header span { font-size: 15px; font-weight: bold; color: #7F77DD; }
+.cal-nav { background: none; border: 1px solid #CECBF6; border-radius: 6px; width: 30px; height: 30px; cursor: pointer; font-size: 16px; color: #7F77DD; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-day-name { text-align: center; font-size: 11px; color: #AFA9EC; padding: 4px 0; font-weight: bold; }
+.cal-day-name:first-child { color: #e57373; }
+.cal-day-name:last-child { color: #7F77DD; }
+.cal-day { text-align: center; padding: 6px 2px; font-size: 13px; border-radius: 6px; cursor: pointer; min-height: 34px; position: relative; }
+.cal-day:hover { background: #EEEDFE; }
+.cal-day.today { background: #EEEDFE; font-weight: bold; color: #7F77DD; }
+.cal-day.selected { background: #7F77DD; color: #ffffff !important; font-weight: bold; }
+.cal-day.has-event::after { content: '●'; font-size: 6px; color: #7F77DD; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); }
+.cal-day.selected.has-event::after { color: #ffffff; }
+.cal-day.empty { cursor: default; }
+.cal-day.sunday { color: #e57373; }
+.cal-day.saturday { color: #7F77DD; }
+.form-row { margin-bottom: 10px; }
+.form-row label { font-size: 12px; color: #AFA9EC; display: block; margin-bottom: 4px; }
+.form-row input, .form-row select, .form-row textarea { width: 100%; padding: 8px 10px; border: 1px solid #CECBF6; border-radius: 8px; font-size: 14px; color: #3C3489; background: #faf8ff; font-family: inherit; }
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus { outline: none; border-color: #AFA9EC; }
+.form-row textarea { min-height: 60px; resize: none; }
+.btn-row { display: flex; gap: 8px; }
+.btn { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: #7F77DD; color: #ffffff; flex: 1; }
+.btn-primary:hover { background: #534AB7; }
+.btn-cancel { background: #f5f0e8; color: #AFA9EC; border: 1px solid #CECBF6; cursor: pointer; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: bold; }
+
+/* 予定リスト */
+.event-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0ecf8; }
+.event-item:last-child { border-bottom: none; }
+.event-dot { width: 10px; height: 10px; border-radius: 50%; background: #7F77DD; flex-shrink: 0; margin-top: 4px; }
+.event-info { flex: 1; }
+.event-title { font-size: 14px; font-weight: bold; color: #3C3489; }
+.event-time { font-size: 12px; color: #AFA9EC; margin-top: 2px; }
+.event-memo { font-size: 12px; color: #7F77DD; margin-top: 2px; }
+.event-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.btn-edit { background: #EEEDFE; border: 1px solid #CECBF6; border-radius: 6px; color: #7F77DD; cursor: pointer; font-size: 12px; padding: 4px 8px; }
+.btn-edit:hover { background: #d8d5f7; }
+.btn-del { background: none; border: none; color: #CECBF6; cursor: pointer; font-size: 16px; padding: 4px; }
+.btn-del:hover { color: #e57373; }
+.empty-msg { font-size: 13px; color: #AFA9EC; text-align: center; padding: 1rem 0; }
+
+/* 編集モーダル */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; display: none; align-items: center; justify-content: center; padding: 1rem; }
+.modal-overlay.show { display: flex; }
+.modal { background: #ffffff; border-radius: 14px; padding: 1.2rem; width: 100%; max-width: 480px; border: 1px solid #CECBF6; }
+.modal-title { font-size: 15px; font-weight: bold; color: #3C3489; margin-bottom: 1rem; }
+
+/* TODO */
+.todo-input-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+.todo-input-row input { flex: 1; padding: 10px 12px; border: 1px solid #CECBF6; border-radius: 8px; font-size: 14px; color: #3C3489; background: #faf8ff; font-family: inherit; }
+.todo-input-row input:focus { outline: none; border-color: #AFA9EC; }
+.todo-input-row button { padding: 10px 16px; background: #7F77DD; color: #ffffff; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
+.todo-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0ecf8; }
+.todo-item:last-child { border-bottom: none; }
+.todo-check { width: 20px; height: 20px; border: 2px solid #CECBF6; border-radius: 5px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; font-size: 12px; }
+.todo-check.done { background: #7F77DD; border-color: #7F77DD; color: #ffffff; }
+.todo-text { flex: 1; font-size: 14px; color: #3C3489; word-break: break-all; }
+.todo-text.done { text-decoration: line-through; color: #AFA9EC; }
+.todo-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.todo-filter { display: flex; gap: 6px; margin-bottom: 10px; }
+.filter-btn { padding: 4px 12px; border-radius: 20px; border: 1px solid #CECBF6; background: #ffffff; color: #AFA9EC; font-size: 12px; cursor: pointer; }
+.filter-btn.active { background: #7F77DD; border-color: #7F77DD; color: #ffffff; }
+
+/* TODO編集行 */
+.todo-edit-row { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0ecf8; }
+.todo-edit-row input { flex: 1; padding: 6px 10px; border: 1px solid #AFA9EC; border-radius: 6px; font-size: 14px; color: #3C3489; background: #faf8ff; font-family: inherit; }
+.todo-edit-row input:focus { outline: none; border-color: #7F77DD; }
+.btn-save { background: #7F77DD; border: none; border-radius: 6px; color: #ffffff; cursor: pointer; font-size: 12px; padding: 6px 10px; font-weight: bold; }
+.btn-cancel-sm { background: #f5f0e8; border: 1px solid #CECBF6; border-radius: 6px; color: #AFA9EC; cursor: pointer; font-size: 12px; padding: 6px 10px; }
+
+.notify-banner { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: #7F77DD; color: #ffffff; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: bold; z-index: 999; display: none; max-width: 90%; text-align: center; box-shadow: 0 4px 12px rgba(127,119,221,0.4); }
+</style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans pb-20">
+<body>
+<div class="notify-banner" id="notifyBanner"></div>
 
-  <!-- ヘッダー -->
-  <header class="bg-indigo-600 text-white p-6 rounded-b-3xl shadow-md mb-8">
-    <div class="max-w-5xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <i class="fa-solid fa-bell text-2xl"></i>
-        <h1 class="text-2xl font-bold tracking-tight">Schedule & Remind</h1>
-      </div>
-      <button onclick="testNotification()" class="text-sm bg-indigo-500 hover:bg-indigo-400 px-4 py-2 rounded-xl transition-colors font-medium shadow-sm">
-        通知テスト
-      </button>
+<!-- 予定編集モーダル -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">✏️ 予定を編集</div>
+    <div class="form-row"><label>タイトル</label><input type="text" id="editTitle"></div>
+    <div class="form-row"><label>日時</label><input type="datetime-local" id="editDatetime"></div>
+    <div class="form-row">
+      <label>リマインド</label>
+      <select id="editRemind">
+        <option value="0">時間ちょうど</option>
+        <option value="5">5分前</option>
+        <option value="10">10分前</option>
+        <option value="30">30分前</option>
+        <option value="60">1時間前</option>
+        <option value="1440">1日前</option>
+      </select>
     </div>
-  </header>
-
-  <main class="max-w-5xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8">
-    
-    <!-- 左カラム：カレンダー ＆ 入力フォーム -->
-    <div class="lg:col-span-5 space-y-6">
-      
-      <!-- カレンダー -->
-      <section class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
-            <i class="fa-regular fa-calendar-days text-indigo-500"></i> カレンダー
-          </h2>
-          <div class="flex items-center gap-2 bg-slate-50 rounded-full p-1 border border-slate-100">
-            <button onclick="changeMonth(-1)" class="p-1.5 hover:bg-white rounded-full transition-colors shadow-sm w-8 h-8 flex items-center justify-center">
-              <i class="fa-solid fa-chevron-left text-sm"></i>
-            </button>
-            <span id="calendar-title" class="font-semibold text-sm w-24 text-center text-slate-700"></span>
-            <button onclick="changeMonth(1)" class="p-1.5 hover:bg-white rounded-full transition-colors shadow-sm w-8 h-8 flex items-center justify-center">
-              <i class="fa-solid fa-chevron-right text-sm"></i>
-            </button>
-          </div>
-        </div>
-        
-        <div class="grid grid-cols-7 gap-1 text-center text-xs mb-2">
-          <div class="font-medium py-1 text-red-400">日</div>
-          <div class="font-medium py-1 text-slate-400">月</div>
-          <div class="font-medium py-1 text-slate-400">火</div>
-          <div class="font-medium py-1 text-slate-400">水</div>
-          <div class="font-medium py-1 text-slate-400">木</div>
-          <div class="font-medium py-1 text-slate-400">金</div>
-          <div class="font-medium py-1 text-blue-400">土</div>
-        </div>
-        <div id="calendar-grid" class="grid grid-cols-7 gap-1">
-          <!-- JSでカレンダーが生成されます -->
-        </div>
-      </section>
-
-      <!-- 入力フォーム -->
-      <section id="form-section" class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 transition-all">
-        <h2 id="form-title" class="text-lg font-bold mb-4 flex items-center gap-2 text-slate-700">
-          <i class="fa-solid fa-plus text-indigo-500"></i> 新しい予定を追加
-        </h2>
-        <form id="task-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
-          <div>
-            <input type="text" id="task-title" placeholder="予定のタイトル（例：ミーティング）" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-colors" required>
-          </div>
-          
-          <div class="grid grid-cols-2 gap-4">
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <i class="fa-regular fa-calendar"></i>
-              </div>
-              <input type="date" id="task-date" class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" required>
-            </div>
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <i class="fa-regular fa-clock"></i>
-              </div>
-              <input type="time" id="task-time" class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" required>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-3">
-            <label class="text-sm font-medium text-slate-600 whitespace-nowrap">リマインド:</label>
-            <select id="task-reminder" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700">
-              <option value="0">時間ちょうど</option>
-              <option value="5">5分前</option>
-              <option value="10">10分前</option>
-              <option value="30">30分前</option>
-              <option value="60">1時間前</option>
-              <option value="1440">1日前</option>
-            </select>
-          </div>
-
-          <div class="flex gap-2 mt-2">
-            <button type="submit" id="submit-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3.5 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              <i class="fa-solid fa-plus"></i> 追加する
-            </button>
-            <!-- 編集キャンセルのボタン（普段は非表示） -->
-            <button type="button" id="cancel-edit-btn" onclick="cancelEdit()" class="hidden flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-3.5 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2">
-              <i class="fa-solid fa-xmark"></i> キャンセル
-            </button>
-          </div>
-        </form>
-      </section>
+    <div class="form-row"><label>メモ（任意）</label><textarea id="editMemo"></textarea></div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveEdit()">保存する</button>
     </div>
+  </div>
+</div>
 
-    <!-- 右カラム：タスクリスト -->
-    <div class="lg:col-span-7">
-      <section class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 min-h-[500px]">
-        <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
-          <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
-            <i class="fa-solid fa-list-check text-indigo-500"></i> 
-            <span id="list-title">すべての予定</span>
-          </h2>
-          <button id="show-all-btn" onclick="setFilterDate(null)" class="hidden text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
-            すべて表示
-          </button>
-        </div>
-        
-        <div id="task-list" class="space-y-3">
-          <!-- JSでタスクリストが生成されます -->
-        </div>
-      </section>
-    </div>
-  </main>
-
-  <!-- アプリ内ポップアップ通知（トースト）コンテナ -->
-  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+<div class="app">
+  <div class="header">
+    <h1>✦ Schedule & Todo ✦</h1>
+    <p>予定とやることを、ひとつにまとめて</p>
   </div>
 
-  <script>
-    // === 状態管理 ===
-    let tasks = [];
-    let currentMonth = new Date();
-    let filterDate = null;
-    let editingTaskId = null; // 編集中のタスクIDを保持する変数
+  <button class="test-btn" onclick="testSound()">🔔 通知音テスト（最初に一度タップしてください）</button>
 
-    // === 初期化 ===
-    function init() {
-      const saved = localStorage.getItem('schedule_tasks_html');
-      if (saved) {
-        tasks = JSON.parse(saved);
-      }
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('schedule')">📅 スケジュール</button>
+    <button class="tab" onclick="switchTab('todo')">✓ TODOリスト</button>
+  </div>
 
-      resetFormDefaults();
+  <div class="section active" id="section-schedule">
+    <div class="card">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+        <span id="calTitle"></span>
+        <button class="cal-nav" onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="cal-grid">
+        <div class="cal-day-name">日</div><div class="cal-day-name">月</div><div class="cal-day-name">火</div>
+        <div class="cal-day-name">水</div><div class="cal-day-name">木</div><div class="cal-day-name">金</div><div class="cal-day-name">土</div>
+      </div>
+      <div class="cal-grid" id="calDays"></div>
+    </div>
 
-      if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission();
-      }
+    <div class="card">
+      <div class="card-title" id="selectedDateLabel">予定を追加</div>
+      <div class="form-row"><label>タイトル</label><input type="text" id="evTitle" placeholder="例：美容院、打ち合わせ"></div>
+      <div class="form-row"><label>日時</label><input type="datetime-local" id="evDatetime"></div>
+      <div class="form-row">
+        <label>リマインド</label>
+        <select id="evRemind">
+          <option value="0">時間ちょうど</option>
+          <option value="5">5分前</option>
+          <option value="10">10分前</option>
+          <option value="30">30分前</option>
+          <option value="60">1時間前</option>
+          <option value="1440">1日前</option>
+        </select>
+      </div>
+      <div class="form-row"><label>メモ（任意）</label><textarea id="evMemo" placeholder="備考など"></textarea></div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="addEvent()">追加する</button></div>
+    </div>
 
-      document.getElementById('task-title').addEventListener('input', function() {
-        document.getElementById('submit-btn').disabled = !this.value.trim();
-      });
-      document.getElementById('submit-btn').disabled = true;
+    <div class="card">
+      <div class="card-title">📋 すべての予定</div>
+      <div id="eventList"></div>
+    </div>
+  </div>
 
-      updateUI();
-      setInterval(checkReminders, 10000);
+  <div class="section" id="section-todo">
+    <div class="card">
+      <div class="card-title">やることリスト</div>
+      <div class="todo-input-row">
+        <input type="text" id="todoInput" placeholder="やることを入力してください" onkeydown="if(event.key==='Enter')addTodo()">
+        <button onclick="addTodo()">追加</button>
+      </div>
+      <div class="todo-filter">
+        <button class="filter-btn active" onclick="filterTodo('all',this)">すべて</button>
+        <button class="filter-btn" onclick="filterTodo('active',this)">未完了</button>
+        <button class="filter-btn" onclick="filterTodo('done',this)">完了済み</button>
+      </div>
+      <div id="todoList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 音 =====
+let audioCtx = null;
+function getAudioCtx() { if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function playNotifySound() {
+  try {
+    const ctx=getAudioCtx();
+    const notes=[880,1046,1318];
+    notes.forEach((freq,i)=>{
+      const osc=ctx.createOscillator(), gain=ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type='sine'; osc.frequency.setValueAtTime(freq,ctx.currentTime+i*0.18);
+      gain.gain.setValueAtTime(0,ctx.currentTime+i*0.18);
+      gain.gain.linearRampToValueAtTime(0.4,ctx.currentTime+i*0.18+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.18+0.35);
+      osc.start(ctx.currentTime+i*0.18); osc.stop(ctx.currentTime+i*0.18+0.35);
+    });
+  } catch(e) { console.log('音エラー:',e); }
+}
+function testSound() { playNotifySound(); showNotify('🔔 通知音テスト！これがリマインド時に鳴ります'); }
+
+// ===== データ =====
+let events=JSON.parse(localStorage.getItem('schedule_events')||'[]');
+let todos=JSON.parse(localStorage.getItem('schedule_todos')||'[]');
+function saveEvents(){localStorage.setItem('schedule_events',JSON.stringify(events));}
+function saveTodos(){localStorage.setItem('schedule_todos',JSON.stringify(todos));}
+
+// ===== タブ =====
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='schedule')||(i===1&&tab==='todo')));
+  document.getElementById('section-schedule').classList.toggle('active',tab==='schedule');
+  document.getElementById('section-todo').classList.toggle('active',tab==='todo');
+}
+
+// ===== カレンダー =====
+let currentYear=new Date().getFullYear(), currentMonth=new Date().getMonth(), selectedDate=null;
+function renderCalendar() {
+  const today=new Date(), firstDay=new Date(currentYear,currentMonth,1).getDay(), daysInMonth=new Date(currentYear,currentMonth+1,0).getDate();
+  document.getElementById('calTitle').textContent=`${currentYear}年${currentMonth+1}月`;
+  const container=document.getElementById('calDays'); container.innerHTML='';
+  for(let i=0;i<firstDay;i++){const el=document.createElement('div');el.className='cal-day empty';container.appendChild(el);}
+  for(let d=1;d<=daysInMonth;d++){
+    const el=document.createElement('div');
+    const dateStr=`${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow=new Date(currentYear,currentMonth,d).getDay();
+    let cls='cal-day';
+    if(dow===0)cls+=' sunday'; if(dow===6)cls+=' saturday';
+    if(d===today.getDate()&&currentMonth===today.getMonth()&&currentYear===today.getFullYear())cls+=' today';
+    if(selectedDate===dateStr)cls+=' selected';
+    if(events.some(e=>e.datetime&&e.datetime.startsWith(dateStr)))cls+=' has-event';
+    el.className=cls; el.textContent=d; el.onclick=()=>selectDate(dateStr,d); container.appendChild(el);
+  }
+}
+function selectDate(dateStr,d){
+  selectedDate=dateStr;
+  document.getElementById('evDatetime').value=dateStr+'T09:00';
+  document.getElementById('selectedDateLabel').textContent=`${currentYear}年${currentMonth+1}月${d}日の予定を追加`;
+  renderCalendar();
+}
+function changeMonth(dir){
+  currentMonth+=dir;
+  if(currentMonth>11){currentMonth=0;currentYear++;} if(currentMonth<0){currentMonth=11;currentYear--;}
+  renderCalendar();
+}
+
+// ===== 予定追加 =====
+function addEvent(){
+  const title=document.getElementById('evTitle').value.trim();
+  const datetime=document.getElementById('evDatetime').value;
+  const remind=parseInt(document.getElementById('evRemind').value);
+  const memo=document.getElementById('evMemo').value.trim();
+  if(!title||!datetime){alert('タイトルと日時を入力してください');return;}
+  const ev={id:Date.now(),title,datetime,remind,memo};
+  events.push(ev); events.sort((a,b)=>a.datetime.localeCompare(b.datetime)); saveEvents();
+  document.getElementById('evTitle').value=''; document.getElementById('evMemo').value='';
+  renderCalendar(); renderEvents(); scheduleReminder(ev); showNotify('✅ 予定を追加しました！');
+}
+
+function deleteEvent(id){events=events.filter(e=>e.id!==id);saveEvents();renderCalendar();renderEvents();}
+
+// ===== 予定編集 =====
+let editingId = null;
+function openEditModal(id) {
+  const ev=events.find(e=>e.id===id); if(!ev)return;
+  editingId=id;
+  document.getElementById('editTitle').value=ev.title;
+  document.getElementById('editDatetime').value=ev.datetime;
+  document.getElementById('editRemind').value=ev.remind;
+  document.getElementById('editMemo').value=ev.memo||'';
+  document.getElementById('editModal').classList.add('show');
+}
+function closeModal(){document.getElementById('editModal').classList.remove('show');editingId=null;}
+function saveEdit(){
+  const ev=events.find(e=>e.id===editingId); if(!ev)return;
+  const title=document.getElementById('editTitle').value.trim();
+  const datetime=document.getElementById('editDatetime').value;
+  if(!title||!datetime){alert('タイトルと日時を入力してください');return;}
+  ev.title=title; ev.datetime=datetime;
+  ev.remind=parseInt(document.getElementById('editRemind').value);
+  ev.memo=document.getElementById('editMemo').value.trim();
+  events.sort((a,b)=>a.datetime.localeCompare(b.datetime)); saveEvents();
+  closeModal(); renderCalendar(); renderEvents(); showNotify('✅ 予定を更新しました！');
+}
+
+function renderEvents(){
+  const container=document.getElementById('eventList');
+  if(events.length===0){container.innerHTML='<div class="empty-msg">予定はまだありません</div>';return;}
+  container.innerHTML=events.map(ev=>{
+    const dt=new Date(ev.datetime);
+    const dateLabel=`${dt.getFullYear()}/${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+    return `<div class="event-item">
+      <div class="event-dot"></div>
+      <div class="event-info">
+        <div class="event-title">${ev.title}</div>
+        <div class="event-time">📅 ${dateLabel}</div>
+        ${ev.memo?`<div class="event-memo">📝 ${ev.memo}</div>`:''}
+      </div>
+      <div class="event-actions">
+        <button class="btn-edit" onclick="openEditModal(${ev.id})">✏️ 編集</button>
+        <button class="btn-del" onclick="deleteEvent(${ev.id})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function scheduleReminder(ev){
+  const fireTime=new Date(ev.datetime).getTime()-ev.remind*60000;
+  const diff=fireTime-Date.now();
+  if(diff>0&&diff<86400000*7){
+    setTimeout(()=>{
+      playNotifySound(); showNotify(`⏰ ${ev.title} のリマインドです！`);
+      if(Notification.permission==='granted') new Notification('⏰ リマインド',{body:ev.title});
+    },diff);
+  }
+}
+
+if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+
+// ===== TODO =====
+let todoFilter='all', editingTodoId=null;
+
+function addTodo(){
+  const text=document.getElementById('todoInput').value.trim(); if(!text)return;
+  todos.push({id:Date.now(),text,done:false}); saveTodos();
+  document.getElementById('todoInput').value=''; renderTodos();
+}
+function toggleTodo(id){const t=todos.find(t=>t.id===id);if(t)t.done=!t.done;saveTodos();renderTodos();}
+function deleteTodo(id){todos=todos.filter(t=>t.id!==id);saveTodos();renderTodos();}
+function filterTodo(f,btn){
+  todoFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderTodos();
+}
+function startEditTodo(id){editingTodoId=id;renderTodos();}
+function cancelEditTodo(){editingTodoId=null;renderTodos();}
+function saveEditTodo(id){
+  const input=document.getElementById(`todoEditInput_${id}`);
+  if(!input)return;
+  const text=input.value.trim(); if(!text)return;
+  const t=todos.find(t=>t.id===id); if(t)t.text=text;
+  saveTodos(); editingTodoId=null; renderTodos(); showNotify('✅ TODOを更新しました！');
+}
+
+function renderTodos(){
+  const container=document.getElementById('todoList');
+  const filtered=todos.filter(t=>{
+    if(todoFilter==='active')return !t.done;
+    if(todoFilter==='done')return t.done;
+    return true;
+  });
+  if(filtered.length===0){container.innerHTML='<div class="empty-msg">TODOはまだありません</div>';return;}
+  container.innerHTML=filtered.map(t=>{
+    if(editingTodoId===t.id){
+      return `<div class="todo-edit-row">
+        <input type="text" id="todoEditInput_${t.id}" value="${t.text}" onkeydown="if(event.key==='Enter')saveEditTodo(${t.id})">
+        <button class="btn-save" onclick="saveEditTodo(${t.id})">保存</button>
+        <button class="btn-cancel-sm" onclick="cancelEditTodo()">取消</button>
+      </div>`;
     }
+    return `<div class="todo-item">
+      <div class="todo-check ${t.done?'done':''}" onclick="toggleTodo(${t.id})">${t.done?'✓':''}</div>
+      <div class="todo-text ${t.done?'done':''}">${t.text}</div>
+      <div class="todo-actions">
+        <button class="btn-edit" onclick="startEditTodo(${t.id})">✏️</button>
+        <button class="btn-del" onclick="deleteTodo(${t.id})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
 
-    // === フォームの初期化処理 ===
-    function resetFormDefaults() {
-      const now = new Date();
-      document.getElementById('task-date').value = now.toISOString().split('T')[0];
-      now.setHours(now.getHours() + 1);
-      document.getElementById('task-time').value = now.toTimeString().substring(0, 5);
-      document.getElementById('task-title').value = '';
-      document.getElementById('task-reminder').value = '0';
-      document.getElementById('submit-btn').disabled = true;
-    }
+// ===== 通知バナー =====
+function showNotify(msg){
+  const b=document.getElementById('notifyBanner'); b.textContent=msg; b.style.display='block';
+  setTimeout(()=>b.style.display='none',4000);
+}
 
-    // === データ保存と画面更新 ===
-    function saveData() {
-      localStorage.setItem('schedule_tasks_html', JSON.stringify(tasks));
-    }
-
-    function updateUI() {
-      renderCalendar();
-      renderTasks();
-    }
-
-    // === カレンダー関連 ===
-    function changeMonth(offset) {
-      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1);
-      updateUI();
-    }
-
-    function setFilterDate(dateStr) {
-      if (filterDate === dateStr) {
-        filterDate = null;
-      } else {
-        filterDate = dateStr;
-        // 新規作成時のみ、カレンダー選択に合わせて日付を変更
-        if (!editingTaskId) {
-          document.getElementById('task-date').value = dateStr;
-        }
-      }
-      updateUI();
-    }
-
-    function renderCalendar() {
-      const year = currentMonth.getFullYear();
-      const month = currentMonth.getMonth();
-      document.getElementById('calendar-title').textContent = `${year}年 ${month + 1}月`;
-
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const firstDay = new Date(year, month, 1).getDay();
-      const todayStr = new Date().toISOString().split('T')[0];
-
-      const grid = document.getElementById('calendar-grid');
-      grid.innerHTML = '';
-
-      for (let i = 0; i < firstDay; i++) {
-        grid.innerHTML += `<div class="p-2"></div>`;
-      }
-
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const hasTask = tasks.some(t => t.date === dateStr && !t.completed);
-        const isSelected = filterDate === dateStr;
-        const isToday = todayStr === dateStr;
-
-        let btnClass = "relative p-2 w-full aspect-square flex flex-col items-center justify-center rounded-full text-sm transition-all ";
-        if (isSelected) {
-          btnClass += "bg-indigo-600 text-white shadow-md";
-        } else if (isToday) {
-          btnClass += "bg-indigo-50 text-indigo-700 font-bold border border-indigo-200";
-        } else {
-          btnClass += "hover:bg-slate-100 text-slate-700 cursor-pointer";
-        }
-
-        let dotClass = isSelected ? "bg-white" : "bg-orange-500";
-        let dotHtml = hasTask ? `<span class="task-dot ${dotClass}"></span>` : '';
-
-        grid.innerHTML += `
-          <button onclick="setFilterDate('${dateStr}')" class="${btnClass}">
-            <span>${d}</span>
-            ${dotHtml}
-          </button>
-        `;
-      }
-    }
-
-    // === タスク一覧表示 ===
-    function renderTasks() {
-      const list = document.getElementById('task-list');
-      const showAllBtn = document.getElementById('show-all-btn');
-      const listTitle = document.getElementById('list-title');
-
-      let displayedTasks = tasks;
-      if (filterDate) {
-        displayedTasks = tasks.filter(t => t.date === filterDate);
-        const [y, m, d] = filterDate.split('-');
-        listTitle.textContent = `${y}年${parseInt(m)}月${parseInt(d)}日の予定`;
-        showAllBtn.classList.remove('hidden');
-      } else {
-        listTitle.textContent = "すべての予定";
-        showAllBtn.classList.add('hidden');
-      }
-
-      if (displayedTasks.length === 0) {
-        list.innerHTML = `
-          <div class="text-center py-16">
-            <i class="fa-regular fa-calendar-xmark text-5xl text-slate-200 mb-4"></i>
-            <p class="text-slate-500 font-medium">予定はありません</p>
-            ${filterDate ? '<p class="text-sm text-slate-400 mt-1">他の日付を選択するか、新しく予定を追加してください</p>' : ''}
-          </div>
-        `;
-        return;
-      }
-
-      list.innerHTML = '';
-      const now = new Date();
-
-      displayedTasks.forEach(task => {
-        const taskDateTime = new Date(`${task.date}T${task.time}`);
-        const isPast = taskDateTime < now && !task.completed;
-        const isEditing = editingTaskId === task.id;
-
-        let containerClass = "group flex items-center justify-between p-4 rounded-2xl border transition-all ";
-        if (isEditing) containerClass += "bg-indigo-50 border-indigo-400 shadow-md ring-2 ring-indigo-100";
-        else if (task.completed) containerClass += "bg-slate-50 border-slate-200 opacity-60";
-        else if (isPast) containerClass += "bg-red-50 border-red-200";
-        else containerClass += "bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200";
-
-        let checkClass = "w-7 h-7 rounded-full flex items-center justify-center border-2 flex-shrink-0 transition-all cursor-pointer ";
-        if (task.completed) checkClass += "bg-green-500 border-green-500 text-white shadow-sm";
-        else checkClass += "border-slate-300 hover:border-indigo-500 text-transparent";
-
-        let titleClass = `font-bold truncate text-lg ${task.completed ? 'line-through text-slate-500' : 'text-slate-800'}`;
-        let dateColor = isPast && !task.completed ? 'text-red-600 font-bold' : 'text-slate-500 font-medium';
-        
-        let reminderText = task.reminderOffset === "0" ? '時間ちょうど' : `${task.reminderOffset}分前`;
-
-        list.innerHTML += `
-          <div class="${containerClass}">
-            <div class="flex items-center gap-4 flex-1">
-              <button onclick="toggleComplete('${task.id}')" class="${checkClass}">
-                <i class="fa-solid fa-check text-xs"></i>
-              </button>
-              
-              <div class="flex-1 min-w-0">
-                <p class="${titleClass}">${task.title}</p>
-                <div class="flex items-center gap-4 text-xs mt-1.5">
-                  <span class="flex items-center gap-1.5 ${dateColor}">
-                    ${isPast && !task.completed ? '<i class="fa-solid fa-circle-exclamation"></i>' : ''}
-                    ${!filterDate ? `<span>${task.date}</span>` : ''}
-                    <span class="flex items-center gap-1"><i class="fa-regular fa-clock"></i> ${task.time}</span>
-                  </span>
-                  ${!task.completed ? `
-                  <span class="text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md flex items-center gap-1 font-medium border border-indigo-100">
-                    <i class="fa-solid fa-bell"></i> ${reminderText}
-                  </span>` : ''}
-                </div>
-              </div>
-            </div>
-            
-            <!-- 編集＆削除ボタン -->
-            <div class="flex gap-1 ml-2 flex-shrink-0 transition-opacity">
-              <button onclick="editTask('${task.id}')" class="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="編集">
-                <i class="fa-solid fa-pen text-lg"></i>
-              </button>
-              <button onclick="deleteTask('${task.id}')" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors" title="削除">
-                <i class="fa-solid fa-trash-can text-lg"></i>
-              </button>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    // === タスク操作 ===
-    // フォームの送信処理（追加と更新を兼ねる）
-    function handleFormSubmit(e) {
-      e.preventDefault();
-      const title = document.getElementById('task-title').value.trim();
-      const date = document.getElementById('task-date').value;
-      const time = document.getElementById('task-time').value;
-      const reminderOffset = document.getElementById('task-reminder').value;
-
-      if (!title || !date || !time) return;
-
-      if (editingTaskId) {
-        // --- 編集モード（更新処理） ---
-        tasks = tasks.map(t => {
-          if (t.id === editingTaskId) {
-            // 変更があれば通知フラグ(notified)をリセットし、再び通知されるようにする
-            const isTimeChanged = t.date !== date || t.time !== time || t.reminderOffset !== reminderOffset;
-            return {
-              ...t,
-              title: title,
-              date: date,
-              time: time,
-              reminderOffset: reminderOffset,
-              notified: isTimeChanged ? false : t.notified
-            };
-          }
-          return t;
-        });
-        
-        // 編集モード終了
-        cancelEdit();
-
-      } else {
-        // --- 新規追加モード ---
-        const newTask = {
-          id: 'task_' + Date.now(),
-          title: title,
-          date: date,
-          time: time,
-          reminderOffset: reminderOffset,
-          completed: false,
-          notified: false
-        };
-        tasks.push(newTask);
-        resetFormDefaults();
-      }
-
-      // 日時順に並び替え
-      tasks.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
-      
-      saveData();
-      updateUI();
-    }
-
-    // 編集ボタンを押したときの処理
-    function editTask(id) {
-      const task = tasks.find(t => t.id === id);
-      if (!task) return;
-
-      editingTaskId = id;
-      
-      // フォームにタスクの情報をセット
-      document.getElementById('task-title').value = task.title;
-      document.getElementById('task-date').value = task.date;
-      document.getElementById('task-time').value = task.time;
-      document.getElementById('task-reminder').value = task.reminderOffset;
-
-      // フォームの見た目を「編集モード」に変更
-      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-pen text-indigo-500"></i> 予定を編集';
-      document.getElementById('submit-btn').innerHTML = '<i class="fa-solid fa-check"></i> 更新する';
-      document.getElementById('submit-btn').classList.replace('bg-indigo-600', 'bg-green-600');
-      document.getElementById('submit-btn').classList.replace('hover:bg-indigo-700', 'hover:bg-green-700');
-      document.getElementById('submit-btn').disabled = false;
-      document.getElementById('cancel-edit-btn').classList.remove('hidden');
-
-      // フォームの場所にスクロール
-      document.getElementById('form-section').scrollIntoView({ behavior: 'smooth' });
-      
-      updateUI(); // リストの見た目を更新（編集中の行をハイライト）
-    }
-
-    // 編集キャンセルボタンを押したときの処理
-    function cancelEdit() {
-      editingTaskId = null;
-      
-      resetFormDefaults();
-
-      // フォームの見た目を「新規追加モード」に戻す
-      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-plus text-indigo-500"></i> 新しい予定を追加';
-      document.getElementById('submit-btn').innerHTML = '<i class="fa-solid fa-plus"></i> 追加する';
-      document.getElementById('submit-btn').classList.replace('bg-green-600', 'bg-indigo-600');
-      document.getElementById('submit-btn').classList.replace('hover:bg-green-700', 'hover:bg-indigo-700');
-      document.getElementById('cancel-edit-btn').classList.add('hidden');
-      
-      updateUI();
-    }
-
-    function toggleComplete(id) {
-      tasks = tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
-      saveData();
-      updateUI();
-    }
-
-    function deleteTask(id) {
-      // 編集中に削除された場合はキャンセル処理も行う
-      if (editingTaskId === id) cancelEdit();
-      
-      tasks = tasks.filter(t => t.id !== id);
-      saveData();
-      updateUI();
-    }
-
-    // === 通知・リマインダー ===
-    function playNotificationSound() {
-      try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
-
-        // 3回連続で鳴るように設定
-        const repeatCount = 3; 
-
-        for (let i = 0; i < repeatCount; i++) {
-          const startTime = ctx.currentTime + (i * 0.8);
-
-          const osc = ctx.createOscillator();
-          const gainNode = ctx.createGain();
-
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(880, startTime);
-          osc.frequency.exponentialRampToValueAtTime(1760, startTime + 0.1);
-
-          gainNode.gain.setValueAtTime(0.2, startTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
-
-          osc.connect(gainNode);
-          gainNode.connect(ctx.destination);
-
-          osc.start(startTime);
-          osc.stop(startTime + 0.3);
-        }
-      } catch (e) {
-        console.error("Audio play failed", e);
-      }
-    }
-
-    function showToast(title, timeStr) {
-      const container = document.getElementById('toast-container');
-      const toastId = 'toast_' + Date.now();
-      
-      const toast = document.createElement('div');
-      toast.id = toastId;
-      toast.className = 'bg-white border-l-4 border-indigo-500 rounded-xl shadow-2xl p-4 flex items-start gap-3 animate-bounce-short pointer-events-auto';
-      
-      toast.innerHTML = `
-        <div class="bg-indigo-100 text-indigo-600 p-2.5 rounded-full flex-shrink-0 mt-0.5">
-          <i class="fa-solid fa-bell animate-pulse"></i>
-        </div>
-        <div class="flex-1 pt-0.5">
-          <h4 class="font-bold text-slate-800 text-sm">${title}</h4>
-          <p class="text-xs font-medium text-slate-500 mt-1">${timeStr}</p>
-        </div>
-        <button onclick="document.getElementById('${toastId}').remove()" class="text-slate-400 hover:text-slate-600 p-1 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      `;
-      
-      container.appendChild(toast);
-      
-      setTimeout(() => {
-        if(document.getElementById(toastId)) {
-          document.getElementById(toastId).remove();
-        }
-      }, 10000);
-    }
-
-    function triggerNotification(task) {
-      const message = task.reminderOffset === "0" 
-        ? `時間です: ${task.title}` 
-        : `あと${task.reminderOffset}分で開始: ${task.title}`;
-
-      playNotificationSound();
-
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("スケジュールリマインダー", {
-          body: message,
-          icon: "https://cdn-icons-png.flaticon.com/512/3602/3602145.png"
-        });
-      }
-
-      showToast(message, `${task.date} ${task.time}`);
-    }
-
-    function checkReminders() {
-      const now = new Date();
-      let hasChanges = false;
-
-      tasks = tasks.map(task => {
-        if (task.completed || task.notified) return task;
-
-        const taskDateTime = new Date(`${task.date}T${task.time}`);
-        const reminderTime = new Date(taskDateTime.getTime() - parseInt(task.reminderOffset) * 60000);
-
-        if (now >= reminderTime) {
-          hasChanges = true;
-          triggerNotification(task);
-          return { ...task, notified: true };
-        }
-        return task;
-      });
-
-      if (hasChanges) {
-        saveData();
-      }
-      
-      if (now.getSeconds() % 60 < 10) { 
-        renderTasks();
-      }
-    }
-
-    function testNotification() {
-      playNotificationSound();
-      showToast("テスト通知です！", "時間はちゃんと設定されています");
-      
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("テスト完了", {
-          body: "通知は正常に動作しています。",
-          icon: "https://cdn-icons-png.flaticon.com/512/3602/3602145.png"
-        });
-      }
-    }
-
-    init();
-
-  </script>
+// ===== 初期化 =====
+renderCalendar(); renderEvents(); renderTodos();
+events.forEach(ev=>scheduleReminder(ev));
+const now=new Date();
+const todayStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+document.getElementById('evDatetime').value=todayStr+'T09:00';
+</script>
 </body>
 </html>
